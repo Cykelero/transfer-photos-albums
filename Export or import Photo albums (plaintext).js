@@ -83,6 +83,7 @@ function unpackFolder(packedFolder, destinationFolder, progressCallback) {
 }
 
 function packAlbum(album, progressCallback) {
+	progressCallback(album.mediaItems.length);
 	return {
 		type: 'album',
 		name: album.name(),
@@ -178,11 +179,9 @@ scriptApp.displayAlert(`Your photo library will now be scanned for photos.\nThe 
 let packedFolders;
 whileReportingProgress('Reading…', reportProgress => {
 	let packedPhotoCount = 0;
-	packedFolders = packRootFoldersByName(toPackNames, () => {
-		packedPhotoCount++;
-		if (packedPhotoCount % 111 === 0) {
-			reportProgress(`Reading… (${packedPhotoCount} found)`);
-		}
+	packedFolders = packRootFoldersByName(toPackNames, newlyPackedItemCount => {
+		packedPhotoCount += newlyPackedItemCount;
+		reportProgress(`Reading… (${packedPhotoCount} found)`);
 	});
 });
 
