@@ -86,11 +86,7 @@ function packAlbum(album, progressCallback) {
 	return {
 		type: 'album',
 		name: album.name(),
-		children: toProperArray(album.mediaItems)
-			.map(child => {
-				progressCallback();
-				return child.id();
-			})
+		children: toProperArray(album.mediaItems.id())
 	};
 }
 
