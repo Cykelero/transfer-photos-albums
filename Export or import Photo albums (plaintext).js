@@ -165,6 +165,15 @@ scriptApp.includeStandardAdditions = true;
 
 const toPackNames = ['Collections'];
 
+// // Announce task
+const pluralizedFolders = toPackNames.length === 1 ? 'folder is' : 'folders are';
+const formattedFolderList = toPackNames.reduce((accumulatedList, name, nameIndex, allNames) => {
+	const quotedName = `“${name}”`;
+	const separator = (nameIndex < allNames.length - 1) ? ', ' : ' and ';
+	return (nameIndex === 0) ? quotedName : `${accumulatedList}${separator}${quotedName}`;
+}, '');
+scriptApp.displayAlert(`Your photo library will now be scanned for photos.\nThe specified ${pluralizedFolders} ${formattedFolderList}.`);
+
 // // Read album structure
 let packedFolders;
 whileReportingProgress('Reading…', reportProgress => {
@@ -191,7 +200,7 @@ if (missingItems.length === 0) {
 		'1 item is' :
 		`${missingItems.length} items are`;
 	
-	const missingItemsText = `Folders restored. ${missingItemsString} missing. To display them, please open the source library again, then click Show.`;
+	const missingItemsText = `Folders restored.\n${missingItemsString} missing. To display the missing items, please open the source library again, then click Show.`;
 	
 	const dialogResult = scriptApp.displayDialog(missingItemsText, {
 		buttons: ["Done", "Show"],
