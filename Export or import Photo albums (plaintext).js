@@ -13,14 +13,18 @@ function unpackRootFolders(packedFolders, progressCallback) {
 
 
 function packFolder(folder, progressCallback) {
-	return {
-		type: 'folder',
-		name: folder.name(),
-		children: toProperArray(folder.containers)
-			.map(child => {
-				return isAlbum(child) ? packAlbum(child, progressCallback) : packFolder(child, progressCallback);
-			})
-	};
+	try {
+		return {
+			type: 'folder',
+			name: folder.name(),
+			children: toProperArray(folder.containers)
+				.map(child => {
+					return isAlbum(child) ? packAlbum(child, progressCallback) :	 packFolder(child, progressCallback);
+				})
+		};
+	} catch (error) {
+		throw Error(`Can't find specified folder.`);
+	}
 }
 
 function unpackFolder(packedFolder, destinationFolder, progressCallback) {
@@ -128,11 +132,15 @@ function whileReportingProgress(initialProgressText , callback) {
 	const ephemeralProgressAlbum = photosApp.albums.byName(initialProgressText);
 	const progressAlbum = photosApp.albums.byId(ephemeralProgressAlbum.id());
 	
-	callback(progressText => {
-		progressAlbum.name = progressText;
-	});
-	
-	photosApp.delete(progressAlbum);
+	try {
+		callback(progressText => {
+			progressAlbum.name = progressText;
+		});
+	} catch (error) {
+		throw error;
+	} finally {	
+		photosApp.delete(progressAlbum);
+	}
 }
 
 function toProperArray(automationArray) {
@@ -164,9 +172,21 @@ const photosApp = Application('Photos');
 const scriptApp = Application.currentApplication();
 scriptApp.includeStandardAdditions = true;
 
-const toPackNames = ['Collections'];
+// // Ask for source name
+let toPackNames = [];
+const nameDialogResult = scriptApp.displayDialog('Enter the name of the folder to scan.', {
+	defaultAnswer: '',
+	buttons: ['Cancel', 'Scan folder'],
+	defaultButton: 'Scan folder',
+	cancelButton: 'Cancel'
+});
+
+if (nameDialogResult.buttonReturned === 'Scan folder') {
+	toPackNames.push(nameDialogResult.textReturned);
+}
 
 // // Announce task
+/*
 const pluralizedFolders = toPackNames.length === 1 ? 'folder is' : 'folders are';
 const formattedFolderList = toPackNames.reduce((accumulatedList, name, nameIndex, allNames) => {
 	const quotedName = `“${name}”`;
@@ -174,46 +194,57 @@ const formattedFolderList = toPackNames.reduce((accumulatedList, name, nameIndex
 	return (nameIndex === 0) ? quotedName : `${accumulatedList}${separator}${quotedName}`;
 }, '');
 scriptApp.displayAlert(`Your photo library will now be scanned for photos.\nThe specified ${pluralizedFolders} ${formattedFolderList}.`);
+*/
 
-// // Read album structure
-let packedFolders;
-whileReportingProgress('Reading…', reportProgress => {
-	let packedPhotoCount = 0;
-	packedFolders = packRootFoldersByName(toPackNames, newlyPackedItemCount => {
-		packedPhotoCount += newlyPackedItemCount;
-		reportProgress(`Reading… (${packedPhotoCount} found)`);
+
+// // Do
+if (toPackNames.length > 0) {
+	// Read album structure	
+	let packedFolders;
+	whileReportingProgress('Reading…', reportProgress => {
+		let packedPhotoCount = 0;
+		packedFolders = packRootFoldersByName(toPackNames, newlyPackedItemCount => {
+			packedPhotoCount += newlyPackedItemCount;
+			reportProgress(`Reading… (${packedPhotoCount} found)`);
+		});
 	});
-});
 
-// // Prompt to switch libraries
-scriptApp.displayAlert('Folders successfully scanned. Now, please open the target library, then click OK to start importing.');
-
-// // Unpack folders
-const missingItems = unpackRootFolders(packedFolders);
-
-// // Report missing items
-if (missingItems.length === 0) {
-	scriptApp.displayAlert('Folders successfully restored!');
-} else {
-	const missingItemsString = (missingItems.length === 1) ?
-		'1 item is' :
-		`${missingItems.length} items are`;
-	
-	const missingItemsText = `Folders restored.\n${missingItemsString} missing. To display the missing items, please open the source library again, then click Show.`;
-	
-	const dialogResult = scriptApp.displayDialog(missingItemsText, {
-		buttons: ["Done", "Show"],
-		defaultButton: "Show",
-		cancelButton: "Done"
+	// Prompt to switch libraries
+	const phase2DialogResult = scriptApp.displayDialog('Folders successfully scanned. Now, please open the target library, then click OK to start importing.', {
+		buttons: ["Cancel", "Import"],
+		defaultButton: "Import",
+		cancelButton: "Cancel"
 	});
 	
-	if (dialogResult.buttonReturned === 'Show') {
-		const missingItemsAlbum = {
-			type: 'album',
-			name: '❓ Missing items',
-			children: missingItems
-		};
+	if (phase2DialogResult.buttonReturned === 'Import') {
+		// Unpack folders
+		const missingItems = unpackRootFolders(packedFolders);
+	
+		// Report missing items
+		if (missingItems.length === 0) {
+			scriptApp.displayAlert('Folders successfully restored!');
+		} else {
+			const missingItemsString = (missingItems.length === 1) ?
+				'1 item is' :
+				`${missingItems.length} items are`;
 		
-		unpackAlbum(missingItemsAlbum);
+			const missingItemsText = `Folders restored.\n${missingItemsString} missing. To display	 the missing items, please open the source library again, then click Show.`;
+		
+			const missingItemsDialogResult = scriptApp.displayDialog(missingItemsText, {
+				buttons: ["Done", "Show"],
+				defaultButton: "Show",
+				cancelButton: "Done"
+			});
+		
+			if (missingItemsDialogResult.buttonReturned === 'Show') {
+				const missingItemsAlbum = {
+					type: 'album',
+					name: '❓ Missing items',
+					children: missingItems
+				};
+			
+				unpackAlbum(missingItemsAlbum);
+			}
+		}
 	}
 }
