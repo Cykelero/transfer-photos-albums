@@ -1,4 +1,4 @@
-# Export/import Photos albums
+# Transfer Photos albums
 
 This script allows you to copy albums from one Photos.app photo library to another, as long as the two are related. It's been tested on macOS 10.13 High Sierra only.
 
