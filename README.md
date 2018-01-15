@@ -6,6 +6,7 @@ This script allows you to copy albums from one Photos.app photo library to anoth
 
 - You can only copy between two libraries which are related, i.e. started out as a copy of the other. This means the script is mainly useful for restoring albums from a backup of the target library.
 - Smart albums are not copied. You'll have to recreate them manually, sorry!
+- The order of items (albums and folders) inside folders is not preserved. You'll have to reorder items manually, sorry!
 
 ## Usage
 
